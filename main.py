@@ -1,22 +1,20 @@
 from get_userdata import savedata
-from discord.ext import commands
+from discord.ext import commands, tasks
 from sort_top import *
 import discord
 import discord.ui
 import os
 import sys
 import requests
-import schedule
-import asyncio
 
-botversion = "Alpha 1"
+botversion = "Alpha 1.1"
 
 # Add the parent folder to the Python path
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "."))
 sys.path.append(parent_dir)
 
 # Get discord bot token
-with open(parent_dir+'\\discord_bot_token.txt') as readtoken:
+with open(os.path.join(parent_dir, 'discord_bot_token.txt')) as readtoken:
     discordsecret = readtoken.readline()   
 
 ## BOT
@@ -29,6 +27,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 @bot.event
 async def on_ready():
     await bot.tree.sync()
+    scheduled_data_save.start()
     print(f'Logged in as {bot.user.name}')
 
 class SimpleView(discord.ui.View):
@@ -98,7 +97,7 @@ async def t1total(ctx):
     # Create an embed for the leaderboard
     embed = discord.Embed(title="Tier 1 Total Leaderboard", color=discord.Color(0x6b0000))
     
-    subfolder_path = parent_dir+"\\userkills"
+    subfolder_path = os.path.join(parent_dir, "userkills")
     result_total = get_top_tier1_kills(subfolder_path)
 
     # Sample leaderboard data
@@ -139,7 +138,7 @@ async def t2total(ctx):
     # Create an embed for the leaderboard
     embed = discord.Embed(title="Tier 2 Total Leaderboard", color=discord.Color(0x6b0000))
     
-    subfolder_path = parent_dir+"\\userkills"
+    subfolder_path = os.path.join(parent_dir, "userkills")
     result_total = get_top_tier2_kills(subfolder_path)
 
     # Sample leaderboard data
@@ -180,7 +179,7 @@ async def alltotal(ctx):
     # Create an embed for the leaderboard
     embed = discord.Embed(title="Total Leaderboard", color=discord.Color(0x6b0000))
     
-    subfolder_path = parent_dir+"\\userkills"
+    subfolder_path = os.path.join(parent_dir, "userkills")
     result_total = get_top_total_kills(subfolder_path)
 
     # Sample leaderboard data
@@ -259,18 +258,11 @@ async def version(ctx):
     await ctx.response.send_message(f"Version: {botversion}", ephemeral=True)
 
 
-# Define a function to run the scheduling loop
-async def run_schedule():
-    while True:
-        schedule.run_pending()
-        await asyncio.sleep(1)
-
-
-# Asynchronous main function
-async def main():
-    await bot.start(discordsecret)
-    await run_schedule()
+# Schedule the save_data function to run every 24 hours
+@tasks.loop(hours=24)
+async def scheduled_data_save():
+    savedata()
 
 
 # Run the bot
-asyncio.run(main())
+bot.run(discordsecret)
