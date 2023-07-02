@@ -9,17 +9,17 @@ parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "."))
 sys.path.append(parent_dir)
 
 # Define the paths to the input and output folders
-input_folder = parent_dir+'\\userdata'
-output_folder = parent_dir+'\\userkills'
-old_output_folder = parent_dir+'\\userkills_old'
+input_folder = os.path.join(parent_dir, 'userdata')
+output_folder = os.path.join(parent_dir, 'userkills')
+old_output_folder = os.path.join(parent_dir, 'userkills_old')
 
 # Get API key
-with open(parent_dir+"\\api_key.txt") as readapikey:
+with open(os.path.join(parent_dir, "api_key.txt")) as readapikey:
     API_KEY = [readapikey.readline()]
 hypixel.setKeys(API_KEY)
 
 # Get guild id
-with open(parent_dir+"\\guild_id.txt") as readguild:
+with open(os.path.join(parent_dir, "guild_id.txt")) as readguild:
     hypixel_guild = readguild.readline()
 
 def savedata():
