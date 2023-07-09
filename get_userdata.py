@@ -3,6 +3,7 @@ import os
 import sys
 import json
 import shutil
+import logging
 
 # Add the parent folder to the Python path
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "."))
@@ -22,10 +23,22 @@ hypixel.setKeys(API_KEY)
 with open(os.path.join(parent_dir, "guild_id.txt")) as readguild:
     hypixel_guild = readguild.readline()
 
+# Create a logger instance
+logger = logging.getLogger(__name__)
+# Set the logging level to ERROR
+logger.setLevel(logging.ERROR)
+# Create a console handler
+console_handler = logging.StreamHandler()
+# Create a formatter
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+# Set the formatter for the console handler
+console_handler.setFormatter(formatter)
+# Add the console handler to the logger
+logger.addHandler(console_handler)
+
 def savedata():
     # Get the list of existing files in the "userdata" directory
     existing_files = os.listdir(os.path.join(parent_dir,"userdata"))
-    print(existing_files)
     
     # Get all users in guild
     guild = hypixel.Guild(hypixel_guild)
@@ -34,7 +47,6 @@ def savedata():
 
     # Get individual stats for all users in guild
     for member in members:
-        print(member)
         user = hypixel.SkyblockPlayer(member)
         raw = user.JSON
         raw_json = json.dumps(raw)
@@ -53,7 +65,6 @@ def savedata():
         file_path = os.path.join(parent_dir, "userdata", file_name)
         os.remove(file_path)
 
-    print("REFRESHING DATA")
     # Create the output folder if it doesn't exist
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
@@ -83,13 +94,30 @@ def savedata():
         # Construct the full path to the input file
         input_file_path = os.path.join(input_folder, file_name)
 
-        # Load the JSON data from the input file
-        with open(input_file_path) as f:
-            data = json.load(f)
+        try:
+            # Load the JSON data from the input file
+            with open(input_file_path) as f:
+                data = json.load(f)
+                print(f"Success decoding JSON in {input_file_path}")
+    
+        except FileNotFoundError:
+            error_message = f"File not found: {input_file_path}"
+            logger.error(error_message)
+            continue  # Skip to the next input file
+        except json.JSONDecodeError as e:
+            error_message = f"Error decoding JSON in {input_file_path}: {str(e)}"
+            logger.error(error_message)
+            continue  # Skip to the next input file
+
+        # Check if 'profiles' key is present and has a value of 'null'
+        if 'profiles' not in data or data['profiles'] is None or data['profiles'] == 'null':
+            file_name_without_ext = file_name[:-4]
+            error_message = f'Error: Player "{file_name_without_ext}" has no Skyblock profile'
+            continue
 
         # Iterate over profiles to find the selected profile
         selected_profile = None
-        for profile in data['profiles']:
+        for profile in data.get('profiles', []):
             if profile.get('selected', False):
                 selected_profile = profile
                 break
@@ -99,7 +127,7 @@ def savedata():
 
         # Find the matching member based on the file name
         matching_member = None
-        for member_key, member_value in selected_profile['members'].items():
+        for member_key, member_value in selected_profile.get('members', {}).items():
             if member_key == file_name_without_ext:
                 matching_member = member_value
                 break
@@ -107,9 +135,15 @@ def savedata():
         # Access the "bestiary" field from the matching member
         bestiary_value = matching_member.get('bestiary', {})
 
+        if bestiary_value is None:
+            error_message = f"Error: 'bestiary' field is missing in {file_name}"
+            logger.error(error_message)
+            continue  # Skip to the next input file
+
         # Retrieve "kills_arachne_300" and "kills_arachne_500" values, setting to 0 if they don't exist
         kills_t1 = bestiary_value.get('kills_arachne_300', 0)
         kills_t2 = bestiary_value.get('kills_arachne_500', 0)
+        #kills_t3 = bestiary_value.get('kills_arachne_xxx', 0) # Preparing for when T3 update comes sometime in the future
 
         # Construct the full path to the output file
         output_file_path = os.path.join(output_folder, file_name)
@@ -118,3 +152,4 @@ def savedata():
         with open(output_file_path, 'w') as f:
             f.write(f'kills_t1: {kills_t1}\n')
             f.write(f'kills_t2: {kills_t2}\n')
+            #f.write(f'kills_t3: {kills_t3}\n') # Preparing for when T3 update comes sometime in the future
