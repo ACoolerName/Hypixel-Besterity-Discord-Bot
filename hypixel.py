@@ -19,6 +19,8 @@ verified_api_keys = []
 requestCache = {}
 cacheTime = 60
 
+apirequests = 0
+
 class PlayerNotFoundException(Exception):
     """ Simple exception if a player/UUID is not found. This exception can usually be ignored.
         You can catch this exception with ``except hypixel.PlayerNotFoundException:`` """
@@ -60,7 +62,8 @@ def getJSON(typeOfRequest, **kwargs):
 
     cacheURL = HYPIXEL_API_URL + '{}?key={}{}'.format(typeOfRequest, "None", requestEnd) # TODO: Lowercase
     allURLS = [HYPIXEL_API_URL + '{}?key={}{}'.format(typeOfRequest, api_key, requestEnd)] # Create request URL.
-    print('Sent API REQUEST')
+    apirequests += 1
+    print(f'Sent API REQUEST #{apirequests}')
 
     # If url exists in request cache, and time hasn't expired...
     if cacheURL in requestCache and requestCache[cacheURL]['cacheTime'] > time():
