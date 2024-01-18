@@ -13,8 +13,8 @@ import leveling
 HYPIXEL_API_URL = 'https://api.hypixel.net/'
 UUIDResolverAPI = "https://sessionserver.mojang.com/session/minecraft/profile/"
 
-HYPIXEL_API_KEY_LENGTH = 36 # This is the length of a Hypixel-API key. Don't change from 36.
-verified_api_keys = []
+apikey = "6721d5af-908f-4518-8a05-9893a514572d"
+verified_api_keys = [apikey]
 
 requestCache = {}
 cacheTime = 60
@@ -64,7 +64,7 @@ def getJSON(typeOfRequest, **kwargs):
     cacheURL = HYPIXEL_API_URL + '{}?key={}{}'.format(typeOfRequest, "None", requestEnd) # TODO: Lowercase
     allURLS = [HYPIXEL_API_URL + '{}?key={}{}'.format(typeOfRequest, api_key, requestEnd)] # Create request URL.
     apirequests += 1
-    print(f'Sent API REQUEST #{apirequests}')
+    print(f'Sent API REQUEST #{apirequests} with url {allURLS}')
 
     # If url exists in request cache, and time hasn't expired...
     if cacheURL in requestCache and requestCache[cacheURL]['cacheTime'] > time():
@@ -116,32 +116,6 @@ def setCacheTime(seconds):
         return "Cache time has been successfully set to {} seconds.".format(cacheTime)
     except ValueError as chainedException:
         raise HypixelAPIError("Invalid cache time \"{}\"".format(seconds)) from chainedException
-
-def setKeys(api_keys):
-    """ This function is used to set your Hypixel API keys.
-        It also checks that they are valid/working.
-
-        Raises
-        ------
-        HypixelAPIError
-            If any of the keys are invalid or don't work, this will be raised.
-
-        Parameters
-        -----------
-        api_keys : list
-            A list of the API keys that you would like to use.
-
-            Example: ``['740b8cf8-8aba-f2ed-f7b10119d28']``.
-    """
-    for api_key in api_keys:
-        if len(api_key) == HYPIXEL_API_KEY_LENGTH:
-            response = getJSON('key', key=api_key)
-            if response['success']:
-                verified_api_keys.append(api_key)
-            else:
-                raise HypixelAPIError("hypixel/setKeys: Error with key XXXXXXXX-XXXX-XXXX-XXXX{} | {}".format(api_key[23:], response))
-        else:
-            raise HypixelAPIError("hypixel/setKeys: The key '{}' is not 36 characters.".format(api_key))
 
 class Player:
     """ This class represents a player on Hypixel as a single object.
