@@ -2,7 +2,6 @@ import hypixel
 import os
 import sys
 import json
-import shutil
 import logging
 
 # Add the parent folder to the Python path
@@ -12,12 +11,7 @@ sys.path.append(parent_dir)
 # Define the paths to the input and output folders
 input_folder = os.path.join(parent_dir, 'userdata')
 output_folder = os.path.join(parent_dir, 'userkills')
-old_output_folder = os.path.join(parent_dir, 'userkills_old')
-
-# Get API key
-with open(os.path.join(parent_dir, "api_key.txt")) as readapikey:
-    API_KEY = [readapikey.readline()]
-hypixel.setKeys(API_KEY)
+daily_output_folder = os.path.join(parent_dir, 'dailykills')
 
 # Get guild id
 with open(os.path.join(parent_dir, "guild_id.txt")) as readguild:
@@ -69,23 +63,6 @@ def savedata():
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
-    # Create the old output folder if it doesn't exist
-    if not os.path.exists(old_output_folder):
-        os.makedirs(old_output_folder)
-    else:
-        # Delete all old files in the userkills_old directory
-        old_files = os.listdir(old_output_folder)
-        for file_name in old_files:
-            file_path = os.path.join(old_output_folder, file_name)
-            os.remove(file_path)
-
-    # Move existing files from userkills to userkills_old
-    existing_files = os.listdir(output_folder)
-    for file_name in existing_files:
-        source_file_path = os.path.join(output_folder, file_name)
-        destination_file_path = os.path.join(old_output_folder, file_name)
-        shutil.move(source_file_path, destination_file_path)
-
     # Get the list of files in the input folder
     file_list = os.listdir(input_folder)
 
@@ -98,7 +75,6 @@ def savedata():
             # Load the JSON data from the input file
             with open(input_file_path) as f:
                 data = json.load(f)
-                print(f"Success decoding JSON in {input_file_path}")
     
         except FileNotFoundError:
             error_message = f"File not found: {input_file_path}"
@@ -133,7 +109,7 @@ def savedata():
                 break
 
         # Access the "bestiary" field from the matching member
-        bestiary_value = matching_member.get('bestiary', {})
+        bestiary_value = matching_member.get('bestiary', {}).get('kills', {})
 
         if bestiary_value is None:
             error_message = f"Error: 'bestiary' field is missing in {file_name}"
@@ -141,9 +117,9 @@ def savedata():
             continue  # Skip to the next input file
 
         # Retrieve "kills_arachne_300" and "kills_arachne_500" values, setting to 0 if they don't exist
-        kills_t1 = bestiary_value.get('kills_arachne_300', 0)
-        kills_t2 = bestiary_value.get('kills_arachne_500', 0)
-        #kills_t3 = bestiary_value.get('kills_arachne_xxx', 0) # Preparing for when T3 update comes sometime in the future
+        kills_t1 = bestiary_value.get('arachne_300', 0)
+        kills_t2 = bestiary_value.get('arachne_500', 0)
+        #kills_t3 = bestiary_value.get('arachne_xxx', 0) # Preparing for when T3 update comes sometime in the future
 
         # Construct the full path to the output file
         output_file_path = os.path.join(output_folder, file_name)
