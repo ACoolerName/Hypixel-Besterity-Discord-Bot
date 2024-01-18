@@ -4,7 +4,7 @@
 
 2. Put hypixel api key in "apikey.txt", discord bot token in "discord_bot_token.txt", hypixel guild id in "guild_id.txt"
 
-3. Remove the "REMOVEME.txt" files from the following directories: "/userdata/" "/userkills/" "/userkills_old/"
+3. Remove the "REMOVEME.txt" files from the following directories: "/userdata/" "/userkills/" "/userkills_old/" "/weeklykills/"
 _These files are used to stop github from removing the empty directories from the repo._
 
 4. Run main.py
