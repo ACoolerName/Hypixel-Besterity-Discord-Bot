@@ -11,9 +11,16 @@ _These files are used to stop github from removing the empty directories from th
 
 **WARNING:** DO NOT - share this project WITHOUT removing the hypixel apikey from apikey.txt AND the discord bot token from discord_bot_token.txt
 
+### Current features:
+- [x] 'total' commands
+- [x] 'daily' commands
+- [x] 'weekly' commands
+- [x] working buttons
+- [x] debug & info commands
+- [x] profit calculator commands
+
 ### TODO:
-- [x] Add 'total' commands
-- [x] Add 'daily' commands
-- [x] Add 'weekly' commands
-- [x] Add working buttons
 - [ ] Add 'disabled' to buttons
+- [ ] Fix multithreading
+- [ ] Fix old user data clearing
+- [ ] Optimisations
