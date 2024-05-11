@@ -2,7 +2,7 @@
 
 1. Install requirements with "pip install -r requirements.txt"
 
-2. Put hypixel api key in "apikey.txt", discord bot token in "discord_bot_token.txt", hypixel guild id in "guild_id.txt"
+2. Put hypixel api key in line 16 in "hypixel.py", discord bot token in "discord_bot_token.txt", hypixel guild id in "guild_id.txt"
 
 3. Remove the "REMOVEME.txt" files from the following directories: "/userdata/" "/userkills/" "/userkills_old/" "/weeklykills/"
 _These files are used to stop github from removing the empty directories from the repo._
