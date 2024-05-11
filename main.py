@@ -10,8 +10,10 @@ import sys
 import requests
 import datetime
 import time
+import profit_calc
+import asyncio
 
-botversion = "Release 1.0"
+botversion = "Release 2"
 
 day = 0
 week = 0
@@ -66,12 +68,13 @@ with open(os.path.join(parent_dir, 'discord_bot_token.txt')) as readtoken:
 
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix="!", intents=intents) # The prefix is not used, its just a requirement to have it.
+bot = commands.Bot(command_prefix="!", intents=intents) # The prefix is used for the !sync command
 
 # Event to run when the bot is ready
 @bot.event
 async def on_ready():
     await bot.tree.sync()
+    await bot.add_cog(SyncCog(bot))
     scheduled_data_save.start()
     scheduled_daily_refresh.start()
     scheduled_weekly_refresh.start()
@@ -88,8 +91,29 @@ async def on_resumed():
     if not scheduled_weekly_refresh.is_running():
         scheduled_weekly_refresh.start()  # Restart the loop after resuming
 
-
 # Commands
+def t1profitembed():
+    formatted_money_made = "{:,}".format(round((t1_profit_calc[1])+(t1_profit_calc[2]), 2))
+    formatted_cost = "{:,}".format(t1_profit_calc[2])
+    formatted_profit = "{:,}".format(t1_profit_calc[1])
+    embed=discord.Embed(title="Profit Calculator", description="Tier 1", color=discord.Color(0x00b36e))
+    embed.add_field(name="Number of Bosses", value=f"{t1_profit_calc[0]}", inline=False)
+    embed.add_field(name="Money Made", value=f"${formatted_money_made}", inline=True)
+    embed.add_field(name="Total Cost", value=f"${formatted_cost}", inline=True)
+    embed.add_field(name="Profit", value=f"${formatted_profit}", inline=False)
+    return embed
+
+def t2profitembed():
+    formatted_money_made = "{:,}".format(round((t2_profit_calc[1])+(t2_profit_calc[2]), 2))
+    formatted_cost = "{:,}".format(t2_profit_calc[2])
+    formatted_profit = "{:,}".format(t2_profit_calc[1])
+    embed=discord.Embed(title="Profit Calculator", description="Tier 2", color=discord.Color(0x00b36e))
+    embed.add_field(name="Number of Bosses", value=f"{t2_profit_calc[0]}", inline=False)
+    embed.add_field(name="Money Made", value=f"${formatted_money_made}", inline=True)
+    embed.add_field(name="Total Cost", value=f"${formatted_cost}", inline=True)
+    embed.add_field(name="Profit", value=f"${formatted_profit}", inline=False)
+    return embed          
+
 def t1totalembed():
     # Create an embed for the leaderboard
     embed = discord.Embed(title="Tier 1 Total Leaderboard", color=discord.Color(0x6b0000))
@@ -613,6 +637,38 @@ class SimpleView(discord.ui.View):
             view.message = message
             await view.wait()
 
+class SyncCog(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    @commands.command()
+    async def sync(self, ctx):
+        fmt_global = await ctx.bot.tree.sync()
+        fmt_guild = await ctx.bot.tree.sync(guild=ctx.guild)
+        await ctx.send(f"Synced {len(fmt_global) + len(fmt_guild)} commands.")
+
+# Define /t1profit command
+@bot.tree.command(name="t1profit", description="Arachne tier 1 profit calculator.")
+async def profitcalc(ctx, callings: int):
+    global t1_profit_calc
+    print("T1Profit - command called")
+    await ctx.response.defer()
+    t1_profit_calc = await profit_calc.t1(callings)
+    embed = t1profitembed()
+    await ctx.followup.send(embed=embed)   
+
+
+# Define /t2profit command
+@bot.tree.command(name="t2profit", description="Arachne tier 2 profit calculator.")
+async def profitcalc(ctx, crystals: int):
+    global t2_profit_calc
+    print("T2Profit - command called")
+    await ctx.response.defer()
+    t2_profit_calc = await profit_calc.t2(crystals)
+    embed = t2profitembed()
+    await ctx.followup.send(embed=embed)   
+    
+
 
 # Define /t1total command
 @bot.tree.command(name="t1total", description="Displays alltime leaderboard for total of Tier 1 kills.")
@@ -774,7 +830,7 @@ async def info(ctx):
     print(f"Info - command called") # Debug line
     print(f"Bot Version: {botversion}")
     embed = discord.Embed(title="**Bot Info**",
-    description=f"**Version**\n{botversion}\n\n**ChangeLog**\n- Changed embedded time format\n- Fixed bug in console", colour=0x5c5c5c)
+    description=f"**Version**\n{botversion}\n\n**ChangeLog**\n- Fixed refresh times displaying incorrectly\n- Changed kill count from active profile to all profiles \n- Added profit calculator", colour=0x5c5c5c)
     embed.set_footer(text="Bot by @t_cr1ck", icon_url="https://cdn.discordapp.com/avatars/559636250148208641/84af17c99cf95ba3127f9c1c296f348f.webp")
     await ctx.response.send_message(embed=embed)
 
@@ -782,6 +838,12 @@ async def info(ctx):
 @tasks.loop(minutes=15)
 async def scheduled_data_save():
     global datarefreshtime
+    global currenttime
+    global unixtime
+
+    currenttime = datetime.datetime.now()
+    unixtime = int(time.mktime(currenttime.timetuple()))
+    datarefreshtime = unixtime
     datarefreshtime += 900
     savedata()
 
@@ -790,6 +852,12 @@ async def scheduled_data_save():
 async def scheduled_daily_refresh():
     global day
     global dailyrefreshtime
+    global currenttime
+    global unixtime
+
+    currenttime = datetime.datetime.now()
+    unixtime = int(time.mktime(currenttime.timetuple()))
+    dailyrefreshtime = unixtime
     day += 1
     dailyrefreshtime += 86400
     dailytask.dailyrefresh()
@@ -799,6 +867,12 @@ async def scheduled_daily_refresh():
 async def scheduled_weekly_refresh():
     global week
     global weeklyrefreshtime
+    global currenttime
+    global unixtime
+
+    currenttime = datetime.datetime.now()
+    unixtime = int(time.mktime(currenttime.timetuple()))
+    weeklyrefreshtime = unixtime
     week += 1
     weeklyrefreshtime += 604800
     weeklytask.weeklyrefresh()
