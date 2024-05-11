@@ -13,7 +13,7 @@ import leveling
 HYPIXEL_API_URL = 'https://api.hypixel.net/'
 UUIDResolverAPI = "https://sessionserver.mojang.com/session/minecraft/profile/"
 
-apikey = "6721d5af-908f-4518-8a05-9893a514572d"
+apikey = "5141f3c5-64b7-42ac-8586-abac006d1a58"
 verified_api_keys = [apikey]
 
 requestCache = {}
