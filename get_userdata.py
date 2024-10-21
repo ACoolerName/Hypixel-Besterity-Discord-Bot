@@ -129,3 +129,7 @@ def savedata():
             f.write(f'kills_t1: {kills_t1}\n')
             f.write(f'kills_t2: {kills_t2}\n')
             #f.write(f'kills_t3: {kills_t3}\n') # Preparing for when T3 update comes sometime in the future
+
+if __name__ == "__main__":
+    print("Debugging Mode")
+    savedata()
