@@ -13,16 +13,25 @@ import time
 import profit_calc
 import asyncio
 
-botversion = "Release 2"
+botversion = "Release 2.1"
 
+datarefreshtime = 0
+dailyrefreshtime = 0
+weeklyrefreshtime = 0
 day = 0
 week = 0
 
-currenttime = datetime.datetime.now()
-unixtime = int(time.mktime(currenttime.timetuple()))
-datarefreshtime = unixtime
-dailyrefreshtime = unixtime
-weeklyrefreshtime = unixtime
+# Function to get current Unix time
+def get_unixtime():
+    currenttime = datetime.datetime.now()
+    return int(time.mktime(currenttime.timetuple()))
+
+# Function to calculate the next interval in seconds (for 15 minutes, 24 hours, or 7 days)
+def calculate_next_interval(interval_seconds):
+    current_time = datetime.datetime.now()
+    seconds_since_epoch = int(current_time.timestamp())
+    seconds_until_next_interval = interval_seconds - (seconds_since_epoch % interval_seconds)
+    return seconds_until_next_interval
 
 # Button booleans
 def resetrow1buttons():
@@ -75,21 +84,16 @@ bot = commands.Bot(command_prefix="!", intents=intents) # The prefix is used for
 async def on_ready():
     await bot.tree.sync()
     await bot.add_cog(SyncCog(bot))
-    scheduled_data_save.start()
-    scheduled_daily_refresh.start()
-    scheduled_weekly_refresh.start()
+    await start_task_schedulers()
     print(f'Logged in as {bot.user.name}')
 
 # Event to run when the bot is resumed
 @bot.event
 async def on_resumed():
     print('Bot has resumed.')
-    if not scheduled_data_save.is_running():
-        scheduled_data_save.start()  # Restart the loop after resuming
-    if not scheduled_daily_refresh.is_running():
-        scheduled_daily_refresh.start()  # Restart the loop after resuming
-    if not scheduled_weekly_refresh.is_running():
-        scheduled_weekly_refresh.start()  # Restart the loop after resuming
+    # Check if tasks are already running
+    if not scheduled_data_save.is_running() or not scheduled_daily_refresh.is_running() or not scheduled_weekly_refresh.is_running():
+        await start_task_schedulers()  # Start all task schedulers
 
 # Commands
 def t1profitembed():
@@ -818,8 +822,9 @@ async def allweekly(ctx):
 @bot.tree.command(name="check", description="Checks if the bot is refreshing data.")
 async def check(ctx):
     print("Check - command called") # Debug line
-    if not scheduled_data_save.is_running():
-        scheduled_data_save.start()
+    # Check if tasks are already running
+    if not scheduled_data_save.is_running() or not scheduled_daily_refresh.is_running() or not scheduled_weekly_refresh.is_running():
+        await start_task_schedulers()  # Start all task schedulers
         await ctx.response.send_message('The loop has been started.', ephemeral=True)
     else:
         await ctx.response.send_message('The loop is already running.', ephemeral=True)
@@ -830,52 +835,101 @@ async def info(ctx):
     print(f"Info - command called") # Debug line
     print(f"Bot Version: {botversion}")
     embed = discord.Embed(title="**Bot Info**",
-    description=f"**Version**\n{botversion}\n\n**ChangeLog**\n- Fixed refresh times displaying incorrectly\n- Changed kill count from active profile to all profiles \n- Added profit calculator", colour=0x5c5c5c)
-    embed.set_footer(text="Bot by @t_cr1ck", icon_url="https://cdn.discordapp.com/avatars/559636250148208641/84af17c99cf95ba3127f9c1c296f348f.webp")
+    description=f"**Version**\n{botversion}\n\n**ChangeLog**\n- Fixed refresh times displaying incorrectly for the 7th time\n- Updated API requests to new endpoints \n- Code cleanup", colour=0x5c5c5c)
+    embed.set_footer(text="Bot by @t_cr1ck", icon_url="https://cdn.discordapp.com/avatars/559636250148208641/a8bc7e17e3e584adf2395e576a2a43f3.webp")
     await ctx.response.send_message(embed=embed)
 
+# Define /copypasta command
+@bot.tree.command(name="copypasta", description="What is Arachne?")
+async def copypasta(ctx):
+    part1 = (
+        "Arachne is a boss in the spider island, it has two versions t1 which is spawned with 4 arachnes callings which you can buy off the bazaar, has a faster spawn time, is easier but makes less xp and less coins per hour, and then there's t2 Arachne which is spawned using an Arachne crystal which is crafted using Arachne frags which can also be purchased from the bazaar along with enchanted string and enchanted spider eyes. It has a consistent drop pool as long as you get top 5 damage dealt with no important rng based drops. All of the loot you get from it can either be salvaged for spider essence at the npc in the spider den or insta sold to npc for a consistent price unaffected by deflation of bazaar prices, so more people doing Arachne does not significantly affect the profits you get from it. On top of that, while doing t2 Arachne, you can spawn about 2-3 t4 tarantula slayer bosses because the Arachne broods give a large amount of combat xp per kill. There's also a method to skip half of the spawn animation saving a lot of time. When the boss is during its last phase of broods, go back to the altar and hold down right click with the crystal to spawn a new one the exact moment the last one gets killed by another player finishing off the boss."
+    )
+    
+    part2 = (
+        "You can only craft the Arachne crystals after finishing the entire archeologists relics quest and the shiny relics too. It's definitely worth doing that and crafting the crystals yourself as it saves a lot of coins. Also, the person who places the crystal gets an additional 12 soul string which makes up for about 2/3 of the cost of the crystal. The boss has a damage cap of 20k damage a hit, so you don't need much damage to get top 5 damage. Make sure you have at least 82% attack speed and are using a melee weapon as it is immune to all other sources of damage. If you are dying to the poison attack, use a cow head as your helmet as it gives complete immunity to the poison. Farming t2 Arachnes makes about 15-20m coins an hour."
+    )
+    
+    await ctx.response.send_message(part1)
+    await ctx.channel.send(part2)
+
+
 # Schedule the save_data function to run every 15 mins
-@tasks.loop(minutes=15)
 async def scheduled_data_save():
     global datarefreshtime
-    global currenttime
-    global unixtime
-
-    currenttime = datetime.datetime.now()
-    unixtime = int(time.mktime(currenttime.timetuple()))
-    datarefreshtime = unixtime
-    datarefreshtime += 900
-    savedata()
+    
+    while True:
+        # Calculate time until the next 15-minute interval (900 seconds)
+        sleep_duration = calculate_next_interval(900)
+        
+        # Update the refresh time for the embed
+        datarefreshtime = get_unixtime() + sleep_duration
+        
+        # Run the data saving task
+        savedata()
+        
+        # Print the next refresh time for debugging
+        print(f"Next data refresh at: {datetime.datetime.fromtimestamp(datarefreshtime)}")
+        
+        # Wait until the next 15-minute mark
+        await asyncio.sleep(sleep_duration)
 
 # Schedule the daily function to run every day
-@tasks.loop(hours=24)
 async def scheduled_daily_refresh():
     global day
     global dailyrefreshtime
-    global currenttime
-    global unixtime
-
-    currenttime = datetime.datetime.now()
-    unixtime = int(time.mktime(currenttime.timetuple()))
-    dailyrefreshtime = unixtime
-    day += 1
-    dailyrefreshtime += 86400
-    dailytask.dailyrefresh()
+    
+    while True:
+        # Calculate time until the next 24-hour interval (86400 seconds)
+        sleep_duration = calculate_next_interval(86400)
+        
+        # Update the daily refresh time
+        dailyrefreshtime = get_unixtime() + sleep_duration
+        
+        # Increment the day counter
+        day += 1
+        
+        # Run the daily refresh task
+        dailytask.dailyrefresh()
+        
+        # Print the next daily refresh time for debugging
+        print(f"Next daily refresh at: {datetime.datetime.fromtimestamp(dailyrefreshtime)}")
+        
+        # Wait until the next 24-hour mark
+        await asyncio.sleep(sleep_duration)
 
 # Schedule the weekly function to run every week
-@tasks.loop(hours=168)
 async def scheduled_weekly_refresh():
     global week
     global weeklyrefreshtime
-    global currenttime
-    global unixtime
+    
+    while True:
+        # Calculate time until the next 7-day interval (604800 seconds)
+        sleep_duration = calculate_next_interval(604800)
+        
+        # Update the weekly refresh time
+        weeklyrefreshtime = get_unixtime() + sleep_duration
+        
+        # Increment the week counter
+        week += 1
+        
+        # Run the weekly refresh task
+        weeklytask.weeklyrefresh()
+        
+        # Print the next weekly refresh time for debugging
+        print(f"Next weekly refresh at: {datetime.datetime.fromtimestamp(weeklyrefreshtime)}")
+        
+        # Wait until the next 7-day mark
+        await asyncio.sleep(sleep_duration)
 
-    currenttime = datetime.datetime.now()
-    unixtime = int(time.mktime(currenttime.timetuple()))
-    weeklyrefreshtime = unixtime
-    week += 1
-    weeklyrefreshtime += 604800
-    weeklytask.weeklyrefresh()
+# Start all task schedulers
+async def start_task_schedulers():
+    # Schedule all tasks concurrently
+    await asyncio.gather(
+        scheduled_data_save(),
+        scheduled_daily_refresh(),
+        scheduled_weekly_refresh()
+    )
 
 # Run the bot
 bot.run(discordsecret)
